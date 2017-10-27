@@ -1,28 +1,49 @@
-from urllib import request
-from urllib import parse
-import json
+# -*- coding:UTF-8 -*-
+from bs4 import BeautifulSoup
+from urllib.request import urlretrieve
+import requests
+import os
+import time
 
-if __name__ == "__main__":
-    #对应上图的Request URL
-    Request_URL = 'http://fanyi.youdao.com/translate?smartresult=dict&smartresult=rule&smartresult=ugc&sessionFrom=https://www.baidu.com/link'
-    #创建Form_Data字典，存储上图的Form Data
-    Form_Data = {}
-    Form_Data['type'] = 'AUTO'
-    Form_Data['i'] = 'Jack'
-    Form_Data['doctype'] = 'json'
-    Form_Data['xmlVersion'] = '1.8'
-    Form_Data['keyfrom'] = 'fanyi.web'
-    Form_Data['ue'] = 'ue:UTF-8'
-    Form_Data['action'] = 'FY_BY_CLICKBUTTON'
-    #使用urlencode方法转换标准格式
-    data = parse.urlencode(Form_Data).encode('utf-8')
-    #传递Request对象和转换完格式的数据
-    response = request.urlopen(Request_URL,data)
-    #读取信息并解码
-    html = response.read().decode('utf-8')
-    #使用JSON
-    translate_results = json.loads(html)
-    #找到翻译结果
-    translate_results = translate_results['translateResult'][0][0]['tgt']
-    #打印翻译信息
-    print("翻译的结果是：%s" % translate_results)
+if __name__ == '__main__':
+    list_url = []
+    for num in range(1,3):
+        if num == 1:
+            url = 'http://www.shuaia.net/index.html'
+        else:
+            url = 'http://www.shuaia.net/index_%d.html' % num
+        headers = {
+                "User-Agent":"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+        }
+        req = requests.get(url = url,headers = headers)
+        req.encoding = 'utf-8'
+        html = req.text
+        bf = BeautifulSoup(html, 'lxml')
+        targets_url = bf.find_all(class_='item-img')
+
+        for each in targets_url:
+            list_url.append(each.img.get('alt') + '=' + each.get('href'))
+
+    print('连接采集完成')
+
+    for each_img in list_url:
+        img_info = each_img.split('=')
+        target_url = img_info[1]
+        filename = img_info[0] + '.jpg'
+        print('下载：' + filename)
+        headers = {
+            "User-Agent":"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+        }
+        img_req = requests.get(url = target_url,headers = headers)
+        img_req.encoding = 'utf-8'
+        img_html = img_req.text
+        img_bf_1 = BeautifulSoup(img_html, 'lxml')
+        img_url = img_bf_1.find_all('div', class_='wr-single-content-list')
+        img_bf_2 = BeautifulSoup(str(img_url), 'lxml')
+        img_url = 'http://www.shuaia.net' + img_bf_2.div.img.get('src')
+        if 'images' not in os.listdir():
+            os.makedirs('images')
+        urlretrieve(url = img_url,filename = 'images/' + filename)
+        time.sleep(1)
+
+    print('下载完成！')
